@@ -51,7 +51,7 @@ library(sf)
 
 # Try the high resolution data set
 # Has geom as polygon - quite large - needed for clicking in Shiny app
-eez <- read_sf("World_EEZ_v12_20231025_HR_0_360/", layer="eez_v12_0_360")
+eez <- read_sf("data/World_EEZ_v12_20231025_HR_0_360/", layer="eez_v12_0_360")
 # Low res - not 0-360
 #eez <- read_sf("World_EEZ_v12_20231025_LR/", layer="eez_v12_lowres")
 # Just boundaries data set
@@ -124,6 +124,51 @@ simple_spc_pict_eez[simple_spc_pict_eez$TERRITORY1 %in% c("Micronesia"), "eez_na
 
 # Check they're OK
 sort(simple_spc_pict_eez$eez_name)
+
+# Things look OK but it is possible to simplify further.
+# If you plot just one country / territory, e.g. Hawaii you will see that is full of holes where the land is.
+# This is probably really helpful for proper GIS work but for the Shiny app it can make a mess, particularly with mouseover and mouseout that get triggered everytime you pass over a hole.
+# For our purpose we just want the 'outside' of the EEZ.
+# We'll be plotting a map under the polygons with the land mass, so we don't need these holes.
+# How to get rid of them?
+
+plot(subset(simple_spc_pict_eez, eez_name == "Hawaii")[, "eez_name"])
+
+# The following is me trying to figure out how sf and simple features work.
+# I blunder around, doing stuff in a very wrong way but the result looks OK.
+# Skip to the end if your're not interested in my ham-fisted efforts.
+
+# The geometry is described as a multipolygon. What does that mean?
+# Look at Niue for simple example
+plot(subset(simple_spc_pict_eez, eez_name == "Niue")[, "eez_name"])
+niue <- subset(simple_spc_pict_eez, eez_name == "Niue")$geometry
+
+#POLYGON 	geometry with a positive area (two-dimensional); sequence of points form a closed, non-self intersecting ring; the first ring denotes the exterior ring, zero or more subsequent rings denote holes in this exterior ring
+
+# MULTIPOLTGON - set of POLYGONS
+# Can we cast MP to just a P?
+# Or how to interrogate the MP?
+
+niue[[1]][[1]] # length of 2 - probably inner and outer - second one looks inner
+niue[[1]][[1]][2]
+plot(st_polygon(niue[[1]][[1]][1])) # Just outer, as a polygon
+plot(st_polygon(niue[[1]][[1]][2])) # Just inner, as a polygon
+
+# Assumption - each EEZ geometry is a [[1]][[1]] list with X elements, where the first element is the outer
+# Apply this method across the EEZ data
+# Could use a for loop - bit embarrassing and not very R
+#simple_spc_pict_eez[1,"geometry"][[1]][[1]][1]
+# Brutalise it!
+new_geometry <- lapply(st_geometry(simple_spc_pict_eez), function(x){
+  st_multipolygon(list(st_polygon(x[[1]][1])))
+})
+
+# A list of MPs - but how to get this back into the eez data?
+simple_spc_pict_eez
+st_geometry(simple_spc_pict_eez) <- st_sfc(new_geometry)
+plot(simple_spc_pict_eez[, "eez_name"])
+
+# Looks like it worked!
 
 save(simple_spc_pict_eez, file="data/simple_spc_pict_eez.Rdata")
 
