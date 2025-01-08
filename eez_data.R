@@ -109,10 +109,12 @@ plot(simple_spc_pict_eez[,"TERRITORY1"])
 library(rmapshaper)
 simple_spc_pict_eez <- rmapshaper::ms_simplify(input = as(spc_pict_eez, 'Spatial')) %>% st_as_sf()
 
-object.size(spc_pict_eez)
-object.size(simple_spc_pict_eez)
+object.size(spc_pict_eez) # 22299776 bytes
+object.size(simple_spc_pict_eez) #1313600 bytes
 plot(simple_spc_pict_eez[,"TERRITORY1"])
 # Looks OK! And is smaller
+
+
 
 # Fix up the names of the EEZs
 simple_spc_pict_eez$eez_name <- simple_spc_pict_eez$TERRITORY1
@@ -169,6 +171,8 @@ st_geometry(simple_spc_pict_eez) <- st_sfc(new_geometry)
 plot(simple_spc_pict_eez[, "eez_name"])
 
 # Looks like it worked!
+
+object.size(simple_spc_pict_eez) # 272544 bytes - way smaller too
 
 save(simple_spc_pict_eez, file="data/simple_spc_pict_eez.Rdata")
 
