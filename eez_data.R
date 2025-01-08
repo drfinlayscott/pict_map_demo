@@ -77,7 +77,43 @@ sort(unique(eez$SOVEREIGN1))
 # Kiribati is tricky
 subset(eez, SOVEREIGN1 == "Kiribati")$TERRITORY1
 
-spc_pict_territories <- c("American Samoa", "Cook Islands", "Micronesia", "Fiji", "Guam", "Hawaii", subset(eez, SOVEREIGN1 == "Kiribati")$TERRITORY1, "Marshall Islands", "Nauru", "Niue", "Northern Mariana Islands", "New Caledonia", "Palau", "Papua New Guinea", "Pitcairn", "French Polynesia", "Samoa", "Solomon Islands", "Tokelau", "Tonga", "Tuvalu", "Vanuatu", "Wallis and Futuna")
+# SPC members
+# American Samoa / Samoa américaines 1
+# Australia / Australie 2
+# Cook Islands / Îles Cook 9
+# Federated States of Micronesia / États fédérés de Micronésie 10
+# Fiji / Fidji 13
+# France 18
+# Guam 21
+# Hawaii / Hawaï 22
+# Kiribati 24
+# Marshall Islands/ Îles Marshall 26
+# Nauru 28
+# New Zealand / Nouvelle-Zélande 29
+# Niue 32
+# Northern Mariana Islands/ Îles Marianne du Nord 33
+# Nouvelle-Calédonie / New Caledonia 34
+# Palau 39
+# Papua New Guinea 41
+# Pitcairn Islands / Pitcairn 44
+# Polynésie française / French Polynesia 45
+# Samoa 48
+# Solomon Islands / Îles Salomon 50
+# Tokelau 53
+# Tonga 54
+# Tuvalu 56
+# United Kingdom / Royaume Uni 58
+# United States of America / États-Unis d‘Amérique 59
+# Vanuatu 62
+# Wallis et Futuna 
+
+
+# Drop Hawaii as a US state
+spc_pict_territories <- c("American Samoa", "Cook Islands", "Micronesia", "Fiji", "French Polynesia",
+                          "Guam", subset(eez, SOVEREIGN1 == "Kiribati")$TERRITORY1, "Marshall Islands",
+                          "Nauru", "New Caledonia", "Niue", "Northern Mariana Islands", "Palau",
+                          "Papua New Guinea", "Pitcairn", "Samoa", "Solomon Islands", "Tokelau",
+                          "Tonga", "Tuvalu", "Vanuatu", "Wallis and Futuna")
 
 # For checking
 # print(subset(eez, TERRITORY1 %in% c(spc_pict_territories)), n=27)
@@ -99,11 +135,11 @@ plot(spc_pict_eez[,"TERRITORY1"])
 # See: 
 # https://gis.stackexchange.com/questions/243569/simplify-polygons-of-sf-object
 # Try st_simplify
-simple_spc_pict_eez <- st_simplify(spc_pict_eez, preserveTopology = TRUE) # Try with no arguments
-object.size(spc_pict_eez)
-object.size(simple_spc_pict_eez)
-# Made f'all difference and plot is fucked, probably because of the 0-360 thing
-plot(simple_spc_pict_eez[,"TERRITORY1"])
+#simple_spc_pict_eez <- st_simplify(spc_pict_eez, preserveTopology = TRUE) # Try with no arguments
+#object.size(spc_pict_eez)
+#object.size(simple_spc_pict_eez)
+## Made f'all difference and plot is fucked, probably because of the 0-360 thing
+#plot(simple_spc_pict_eez[,"TERRITORY1"])
 
 # Use rmapshaper package instead
 library(rmapshaper)
@@ -128,13 +164,13 @@ simple_spc_pict_eez[simple_spc_pict_eez$TERRITORY1 %in% c("Micronesia"), "eez_na
 sort(simple_spc_pict_eez$eez_name)
 
 # Things look OK but it is possible to simplify further.
-# If you plot just one country / territory, e.g. Hawaii you will see that is full of holes where the land is.
+# If you plot just one EEZ, e.g. Cook Islands you will see that is full of holes where the land is.
 # This is probably really helpful for proper GIS work but for the Shiny app it can make a mess, particularly with mouseover and mouseout that get triggered everytime you pass over a hole.
 # For our purpose we just want the 'outside' of the EEZ.
 # We'll be plotting a map under the polygons with the land mass, so we don't need these holes.
 # How to get rid of them?
 
-plot(subset(simple_spc_pict_eez, eez_name == "Hawaii")[, "eez_name"])
+plot(subset(simple_spc_pict_eez, eez_name == "Cook Islands")[, "eez_name"])
 
 # The following is me trying to figure out how sf and simple features work.
 # I blunder around, doing stuff in a very wrong way but the result looks OK.
