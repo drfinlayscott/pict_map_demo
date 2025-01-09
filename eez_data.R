@@ -163,6 +163,8 @@ simple_spc_pict_eez[simple_spc_pict_eez$TERRITORY1 %in% c("Micronesia"), "eez_na
 # Check they're OK
 sort(simple_spc_pict_eez$eez_name)
 
+save(simple_spc_pict_eez, file="data/simple_spc_pict_eez.Rdata")
+
 # Things look OK but it is possible to simplify further.
 # If you plot just one EEZ, e.g. Cook Islands you will see that is full of holes where the land is.
 # This is probably really helpful for proper GIS work but for the Shiny app it can make a mess, particularly with mouseover and mouseout that get triggered everytime you pass over a hole.
@@ -210,7 +212,7 @@ plot(simple_spc_pict_eez[, "eez_name"])
 
 object.size(simple_spc_pict_eez) # 272544 bytes - way smaller too
 
-save(simple_spc_pict_eez, file="data/simple_spc_pict_eez.Rdata")
+save(simple_spc_pict_eez, file="data/simple_spc_pict_eez_no_holes.Rdata")
 
 
 
