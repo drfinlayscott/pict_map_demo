@@ -25,7 +25,7 @@
 # SOFTWARE.
 
 # Shiny app to demonstrate how EEZs can be selected from a map.
-# Doesn't actually do anything - could show catches or something.
+# Doesn't actually do anything - just shows random data - could show catches or something.
 # It's just a proof of concept.
 
 library(shiny)
@@ -35,7 +35,7 @@ library(bslib)
 library(ggplot2)
 
 # Load the data - see script eez_data.R for its generation
-load("data/simple_spc_pict_eez_no_holes.Rdata")
+load("data/simple_spc_pict_eez_no_holes.Rdata") # Looks better with the holes removed
 #load("data/simple_spc_pict_eez.Rdata")
 
 # Make the map using leaflet - each EEZ polygon will be a polygon
@@ -44,21 +44,21 @@ load("data/simple_spc_pict_eez_no_holes.Rdata")
 # Or get a map of the world in sf format and plot polygons - very time consuming
 # Current approach is physical map, with labels added on last
 # Or OpenStreetMap - just set opacity of polygons to low
-eez_map <- leaflet() %>%
-  setView(lat = -20, lng = 180, zoom = 3.1) %>%
-  addMapPane("background_map", zIndex = 410) %>%  # Level 1: bottom
-  addMapPane("eez", zIndex = 420) %>%  # Level 2: mid
-  addMapPane("labels", zIndex = 430) %>%          # Level 3: top
-  addTiles() %>% # Default open street map - high level of zoom - is OK
-  # Or do these two together
+eez_map <- leaflet() |>
+  setView(lat = -5, lng = 180, zoom = 3.1) |>
+  addMapPane("background_map", zIndex = 410) |>  # Level 1: bottom
+  addMapPane("eez", zIndex = 420) |>  # Level 2: mid
+  addMapPane("labels", zIndex = 430) |>          # Level 3: top
+  addTiles() |> # Default open street map - high level of zoom - is OK
+  # Or do these two together - looks pretty cool
   #addProviderTiles(
   #  providers$Esri.WorldPhysical, # Cool but no country names
   #  options = pathOptions(pane = "background_map")
-  #) %>%
+  #) |> 
   #addProviderTiles(
   #  providers$CartoDB.PositronOnlyLabels,
   #  options = pathOptions(pane = "background_map")
-  #) %>% 
+  #) |> 
   addPolygons(data = simple_spc_pict_eez,
                    weight = 1,
                    fillOpacity = 0.05, # 0 = no fill
@@ -68,64 +68,34 @@ eez_map <- leaflet() %>%
                    # This is the key argument - set the input$id value for IDing an layer
                    # Here we use the eez_name column to ID a layer
                    layerId=simple_spc_pict_eez$eez_name)
+# Check it out
+# eez_mape
   
+# Make up some fake data for a demo bar chart
+bdat <- expand.grid(eez_name = simple_spc_pict_eez$eez_name,
+            year = 2000:2024,
+            Set = c("Set 1", "Set 2", "Set 3"))
+bdat$data <- runif(n=nrow(bdat), min=1000, max=5000)
 
-
+# ----------------------------- The app --------------------------------------
 
 # Super simple layout for now 
 # Single card with the map
 ui <- page_fillable(
   title = "PICT EEZ map demo",
-  #h1("PICT EEZ map demo"),
   
   # Column layout with map taking up most of the space
   layout_columns(
-    #col_widths=c(6,6,8,4), # For testing
-    #card(
-    #  card_header("map_shape_mouseover"),
-    #  htmlOutput("map_shape_mouseover") 
-    #),
-    #card(
-    #  card_header("map_shape_mouseout"),
-    #  htmlOutput("map_shape_mouseout") 
-    #),
-    col_widths=c(8,4),
+    col_widths=c(7,5,7,5),
     card(leafletOutput("mymap")),
-    card("Plot or whatever",
-      plotOutput("eez_plot"))
+    card("Some other plot"),
+    card("Example bar chart with random data",
+      plotOutput("eez_bar_plot")),
+    card("Maybe a table")
   )
-  
-  
 )
 
 server <- function(input, output, session){
-  
-  # ***** For testing the mouseover and mouseout events *******
-  # Tart up the input variable text for output
-  #text_prettifier <- function(ip){
-  #  if(is.null(ip)){
-  #    return()
-  #  }
-  #  out <- paste0("Id: ", ip$id, tags$br(), "Lat: ", round(ip$lat,2), tags$br(), "Lon: ", round(ip$lng,2), tags$br(), "Nonce: ", round(ip$.nonce,2), tags$br(), "Rando: ", runif(1, min=0, max=100), tags$br())
-  #  return(out)
-  #}
-  
-  ## Triggers when move out of a EEZ (no clicking)
-  #output$map_shape_mouseout <- renderText({
-  #  ip <- input$mymap_shape_mouseout
-  #  out <- text_prettifier(ip)
-  #  return(out)
-  #})
-  #
-  ## Triggers when move into a EEZ (no clicking)
-  #output$map_shape_mouseover <- renderText({
-  #  ip <- input$mymap_shape_mouseover
-  #  out <- text_prettifier(ip)
-  #  #cat("Arse\n")
-  #  return(out)
-  #})
-  
-  # **************************************************************
   
   # The map 
   # Each polygon in the EEZ data is treated as a layer
@@ -151,20 +121,22 @@ server <- function(input, output, session){
   # Set clearing out to have higher priority so it goes first (though it didn't seem to matter)
   observeEvent(input$mymap_shape_mouseout, {
     out_event <- input$mymap_shape_mouseout
-    leafletProxy("mymap") %>% clearMarkers()
+    leafletProxy("mymap") |> clearMarkers()
   }, priority=1)
   
-  # Make a plot that triggers when click on EEZ
-  
-  output$eez_plot <- renderPlot({
+  # Bar plot of random data
+  output$eez_bar_plot <- renderPlot({
     eez_click <- input$mymap_shape_click
     if(is.null(eez_click)){
       return()
     }
     eez <- eez_click$id
-    fakedata <- data.frame(x=runif(10), y=runif(10))
-    p <- ggplot(fakedata, aes(x=x, y=y)) + geom_point()
-    p <- p + xlab(eez)
+    p <- ggplot(data=subset(bdat, eez_name == eez), aes(x=year, y=data))
+    p <- p + geom_bar(aes(fill=Set), stat="identity")
+    p <- p + facet_wrap(~eez_name)
+    p <- p + theme_bw()
+    p <- p + theme(text = element_text(size = 16))
+    p <- p + xlab("Year") + ylab("Random data")
     return(p)
   })
   
