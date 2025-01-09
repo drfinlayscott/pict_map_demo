@@ -32,36 +32,100 @@ library(shiny)
 library(leaflet)
 library(sf)
 library(bslib)
+library(ggplot2)
 
 # Load the data - see script eez_data.R for its generation
-load("data/simple_spc_pict_eez.Rdata")
+load("data/simple_spc_pict_eez_no_holes.Rdata")
+#load("data/simple_spc_pict_eez.Rdata")
 
 # Make the map using leaflet - each EEZ polygon will be a polygon
-eez_map <- leaflet(simple_spc_pict_eez)
-# Add open street map tiles (country maps)
-eez_map <- addTiles(eez_map)
-# Add the polygons - add a layer ID using the territory name
-# There are a bunch of options for this - line weights and colours and so on
-eez_map <- addPolygons(eez_map,
+# Problem is that without the holes in the EEZ data, the polygons lie over the land mass
+# Solution would be to find a map tile provider that only has land mass layer and plot that on top
+# Or get a map of the world in sf format and plot polygons - very time consuming
+# Current approach is physical map, with labels added on last
+# Or OpenStreetMap - just set opacity of polygons to low
+eez_map <- leaflet() %>%
+  setView(lat = -20, lng = 180, zoom = 3.1) %>%
+  addMapPane("background_map", zIndex = 410) %>%  # Level 1: bottom
+  addMapPane("eez", zIndex = 420) %>%  # Level 2: mid
+  addMapPane("labels", zIndex = 430) %>%          # Level 3: top
+  addTiles() %>% # Default open street map - high level of zoom - is OK
+  # Or do these two together
+  #addProviderTiles(
+  #  providers$Esri.WorldPhysical, # Cool but no country names
+  #  options = pathOptions(pane = "background_map")
+  #) %>%
+  #addProviderTiles(
+  #  providers$CartoDB.PositronOnlyLabels,
+  #  options = pathOptions(pane = "background_map")
+  #) %>% 
+  addPolygons(data = simple_spc_pict_eez,
                    weight = 1,
+                   fillOpacity = 0.05, # 0 = no fill
+                   options=pathOptions(pane="eez"),
                    # Highlight the boxes as you over
                    highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
                    # This is the key argument - set the input$id value for IDing an layer
                    # Here we use the eez_name column to ID a layer
-                   layerId=simple_spc_pict_eez$eez_name) 
-# Have a quick look for a check
-# eez_map
+                   layerId=simple_spc_pict_eez$eez_name)
+  
+
 
 
 # Super simple layout for now 
 # Single card with the map
 ui <- page_fillable(
-  title = "PICT EEZ map test",
-  h1("PICT EEZ map test"),
-  card(leafletOutput("mymap"))
+  title = "PICT EEZ map demo",
+  #h1("PICT EEZ map demo"),
+  
+  # Column layout with map taking up most of the space
+  layout_columns(
+    #col_widths=c(6,6,8,4), # For testing
+    #card(
+    #  card_header("map_shape_mouseover"),
+    #  htmlOutput("map_shape_mouseover") 
+    #),
+    #card(
+    #  card_header("map_shape_mouseout"),
+    #  htmlOutput("map_shape_mouseout") 
+    #),
+    col_widths=c(8,4),
+    card(leafletOutput("mymap")),
+    card("Plot or whatever",
+      plotOutput("eez_plot"))
+  )
+  
+  
 )
 
 server <- function(input, output, session){
+  
+  # ***** For testing the mouseover and mouseout events *******
+  # Tart up the input variable text for output
+  #text_prettifier <- function(ip){
+  #  if(is.null(ip)){
+  #    return()
+  #  }
+  #  out <- paste0("Id: ", ip$id, tags$br(), "Lat: ", round(ip$lat,2), tags$br(), "Lon: ", round(ip$lng,2), tags$br(), "Nonce: ", round(ip$.nonce,2), tags$br(), "Rando: ", runif(1, min=0, max=100), tags$br())
+  #  return(out)
+  #}
+  
+  ## Triggers when move out of a EEZ (no clicking)
+  #output$map_shape_mouseout <- renderText({
+  #  ip <- input$mymap_shape_mouseout
+  #  out <- text_prettifier(ip)
+  #  return(out)
+  #})
+  #
+  ## Triggers when move into a EEZ (no clicking)
+  #output$map_shape_mouseover <- renderText({
+  #  ip <- input$mymap_shape_mouseover
+  #  out <- text_prettifier(ip)
+  #  #cat("Arse\n")
+  #  return(out)
+  #})
+  
+  # **************************************************************
   
   # The map 
   # Each polygon in the EEZ data is treated as a layer
@@ -70,36 +134,41 @@ server <- function(input, output, session){
     return(eez_map)
    }) 
  
- 
-  # Show a pop-up based for each EEZ based on the eez_name column
-  # Could probably add an 'SPC official name' column instead
-  # eez is taken from layer id, which atm is the eez_name column
-  eez_popup <- function(eez, lng, lat) {
-    content <- eez # The text to actually show
-    # Here the content is just layer name (eez_name) but could include other info (population size, area, etc)
-    # Update the map with the pop-up instead of making a new one
-    leafletProxy("mymap") |> addPopups(lng, lat, content, layerId = eez)
-  }
- 
-  # Make an observer() so that When map is clicked, the popup appears
-  # Potentially could be something else - bar chart of catches or something
-  observe({
-    # Get rid of current popups
-    leafletProxy("mymap") %>% clearPopups()
-    # Things happen if you click on something - could use a different input like rollover etc
-    event <- input$mymap_shape_click
-    # If you clicked on something with no layer, don't do anything
-    if (is.null(event)){
+  # Mixing popups and mouseovers doesn't work well - use labels and markers
+  observeEvent(input$mymap_shape_mouseover, {
+    over_event <- input$mymap_shape_mouseover
+    #leafletProxy("mymap") %>% clearMarkers()
+    if(is.null(over_event)){
       return()
     }
-    # Otherwise get the click info contained in the event object
-    # And show a pop-up where you clicked
-    # Could show popup in the center of the polygon?
-    # Use isolate to stop infinite loop from map updating and triggering itself
-    isolate({
-      eez_popup(event$id, event$lng, event$lat)
-    })
+    leafletProxy("mymap") |> addLabelOnlyMarkers(lng=over_event$lng, lat=over_event$lat, layerId=over_event$id, label=over_event$id, labelOptions = labelOptions(noHide = TRUE))
+  }, priority=0)
+  
+  # Clear out old markers if mouseout
+  # Not sure what order of precedent is.
+  # If moving from one EEZ to another, then if mouseout is second then all markers will clear
+  # If mouseout is first, markers are cleared first, then a new marker put on.
+  # Set clearing out to have higher priority so it goes first (though it didn't seem to matter)
+  observeEvent(input$mymap_shape_mouseout, {
+    out_event <- input$mymap_shape_mouseout
+    leafletProxy("mymap") %>% clearMarkers()
+  }, priority=1)
+  
+  # Make a plot that triggers when click on EEZ
+  
+  output$eez_plot <- renderPlot({
+    eez_click <- input$mymap_shape_click
+    if(is.null(eez_click)){
+      return()
+    }
+    eez <- eez_click$id
+    fakedata <- data.frame(x=runif(10), y=runif(10))
+    p <- ggplot(fakedata, aes(x=x, y=y)) + geom_point()
+    p <- p + xlab(eez)
+    return(p)
   })
+  
+  
 }
 
 shinyApp(ui, server)
