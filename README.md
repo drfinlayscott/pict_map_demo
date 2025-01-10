@@ -3,7 +3,7 @@ Proof-of-concept of an R Shiny app with a map with clickable EEZs based on SPC (
 
 It uses the `leaflet` package for plotting the interactive map.
 
-The data comes from [Marine Regions](https://www.marineregions.org).
+The EEZ data comes from [Marine Regions](https://www.marineregions.org).
 
 *Flanders Marine Institute (2023). Maritime Boundaries Geodatabase: Maritime Boundaries and Exclusive Economic Zones (200NM), version 12. https://doi.org/10.14284/632*
 
