@@ -83,8 +83,10 @@ bdat$data <- runif(n=nrow(bdat), min=1000, max=5000)
 # Single card with the map
 ui <- page_fillable(
   title = "PICT EEZ map demo",
-  
+  gap="2px", # Between the column layout and the footer
+  padding=c(10,10,0,10), # Squoosh up the footer to bottom of the page
   # Column layout with map taking up most of the space
+  h1("PICT EEZ map demo"),
   layout_columns(
     col_widths=c(7,5,7,5),
     card(leafletOutput("mymap")),
@@ -92,6 +94,19 @@ ui <- page_fillable(
     card("Example bar chart with random data",
       plotOutput("eez_bar_plot")),
     card("Maybe a table")
+  ),
+  
+  # Footer stuff
+  card(id="my_footer",
+    card_body(
+      padding="2px", # Tight
+      p(
+        style = "font-size: 10px;",
+        "Copyright (C) 2025 Finlay Scott. Source code available ",
+        a("here", href="https://github.com/drfinlayscott/pict_map_demo", target="_blank"),
+        "."
+      )
+    )
   )
 )
 
